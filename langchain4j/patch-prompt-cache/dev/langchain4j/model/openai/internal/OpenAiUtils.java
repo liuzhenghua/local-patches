@@ -37,7 +37,6 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.model.audio.AudioTranscriptionRequest;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -70,37 +69,39 @@ public class OpenAiUtils {
     public static final String DEFAULT_USER_AGENT = "langchain4j-openai";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
-        return toOpenAiMessages(messages, false, null);
+        return toOpenAiMessages(messages, false, null, false);
     }
 
-    public static List<Message> toOpenAiMessages(List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName) {
+    public static List<Message> toOpenAiMessages(List<ChatMessage> messages, boolean sendThinking, String thinkingFieldName, Boolean enablePromptCache) {
         List<Message> parsedMessages =  messages.stream()
-                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName))
+                .map(message -> toOpenAiMessage(message, sendThinking, thinkingFieldName, enablePromptCache))
                 .collect(toList());
-        if (!parsedMessages.isEmpty() && parsedMessages.get(parsedMessages.size() - 1) instanceof dev.langchain4j.model.openai.internal.chat.UserMessage) {
-            dev.langchain4j.model.openai.internal.chat.UserMessage oldUserMessage = (dev.langchain4j.model.openai.internal.chat.UserMessage)parsedMessages.get(parsedMessages.size() - 1);
-            if (oldUserMessage.content() instanceof String) {
-                dev.langchain4j.model.openai.internal.chat.Content newContent = dev.langchain4j.model.openai.internal.chat.Content.builder()
-                        .type(ContentType.TEXT)
-                        .text((String)oldUserMessage.content())
-                        .enableCacheControl()
-                        .build();
-                parsedMessages.set(parsedMessages.size() - 1, dev.langchain4j.model.openai.internal.chat.UserMessage.builder().content(List.of(newContent)).build());
-            } else {
-                List<dev.langchain4j.model.openai.internal.chat.Content> contents = (List<dev.langchain4j.model.openai.internal.chat.Content>)oldUserMessage.content();
-                contents.get(contents.size() - 1).enableCacheControl();
+        if (enablePromptCache) {
+            if (!parsedMessages.isEmpty() && parsedMessages.get(parsedMessages.size() - 1) instanceof dev.langchain4j.model.openai.internal.chat.UserMessage) {
+                dev.langchain4j.model.openai.internal.chat.UserMessage oldUserMessage = (dev.langchain4j.model.openai.internal.chat.UserMessage) parsedMessages.get(parsedMessages.size() - 1);
+                if (oldUserMessage.content() instanceof String) {
+                    dev.langchain4j.model.openai.internal.chat.Content newContent = dev.langchain4j.model.openai.internal.chat.Content.builder()
+                            .type(ContentType.TEXT)
+                            .text((String) oldUserMessage.content())
+                            .enablePromptCache(true)
+                            .build();
+                    parsedMessages.set(parsedMessages.size() - 1, dev.langchain4j.model.openai.internal.chat.UserMessage.builder().content(List.of(newContent)).build());
+                } else {
+                    List<dev.langchain4j.model.openai.internal.chat.Content> contents = (List<dev.langchain4j.model.openai.internal.chat.Content>) oldUserMessage.content();
+                    contents.get(contents.size() - 1).enableCacheControl();
+                }
             }
         }
         return parsedMessages;
     }
 
     public static Message toOpenAiMessage(ChatMessage message) {
-        return toOpenAiMessage(message, false, null);
+        return toOpenAiMessage(message, false, null, false);
     }
 
-    public static Message toOpenAiMessage(ChatMessage message, boolean sendThinking, String thinkingFieldName) {
+    public static Message toOpenAiMessage(ChatMessage message, boolean sendThinking, String thinkingFieldName, Boolean enablePromptCache) {
         if (message instanceof SystemMessage) {
-            return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage) message).text());
+            return dev.langchain4j.model.openai.internal.chat.SystemMessage.from(((SystemMessage) message).text(), enablePromptCache);
         }
 
         if (message instanceof UserMessage userMessage) {
@@ -505,8 +506,9 @@ public class OpenAiUtils {
             ChatRequest chatRequest,
             OpenAiChatRequestParameters parameters,
             Boolean strictTools,
-            Boolean strictJsonSchema) {
-        return toOpenAiChatRequest(chatRequest, parameters, false, null, strictTools, strictJsonSchema);
+            Boolean strictJsonSchema,
+            Boolean enablePromptCache) {
+        return toOpenAiChatRequest(chatRequest, parameters, false, null, strictTools, strictJsonSchema, enablePromptCache);
     }
 
     public static ChatCompletionRequest.Builder toOpenAiChatRequest(
@@ -515,10 +517,11 @@ public class OpenAiUtils {
             boolean sendThinking,
             String thinkingFieldName,
             Boolean strictTools,
-            Boolean strictJsonSchema) {
+            Boolean strictJsonSchema,
+            Boolean enablePromptCache) {
 
         return ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName))
+                .messages(toOpenAiMessages(chatRequest.messages(), sendThinking, thinkingFieldName, enablePromptCache))
                 // common parameters
                 .model(parameters.modelName())
                 .temperature(parameters.temperature())

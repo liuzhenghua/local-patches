@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.List;
@@ -31,7 +30,7 @@ public final class SystemMessage implements Message {
         this.content = List.of(Content.builder()
                 .type(ContentType.TEXT)
                 .text(builder.content)
-                .enableCacheControl()
+                .enablePromptCache(builder.enablePromptCache)
                 .build());
         this.name = builder.name;
     }
@@ -84,8 +83,13 @@ public final class SystemMessage implements Message {
     }
 
     public static SystemMessage from(String content) {
+        return from(content, false);
+    }
+
+    public static SystemMessage from(String content, Boolean enablePromptCache) {
         return SystemMessage.builder()
                 .content(content)
+                .enablePromptCache(enablePromptCache)
                 .build();
     }
 
@@ -100,6 +104,7 @@ public final class SystemMessage implements Message {
 
         private String content;
         private String name;
+        private Boolean enablePromptCache;
 
         public Builder content(String content) {
             this.content = content;
@@ -108,6 +113,11 @@ public final class SystemMessage implements Message {
 
         public Builder name(String name) {
             this.name = name;
+            return this;
+        }
+
+        public Builder enablePromptCache(Boolean enablePromptCache) {
+            this.enablePromptCache = enablePromptCache;
             return this;
         }
 

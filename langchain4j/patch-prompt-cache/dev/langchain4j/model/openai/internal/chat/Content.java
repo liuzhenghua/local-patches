@@ -167,8 +167,12 @@ public class Content {
             return this;
         }
 
-        public Builder enableCacheControl() {
-            this.cacheControl = Map.of("type", "ephemeral");
+        public Builder enablePromptCache(Boolean enablePromptCache) {
+            if (enablePromptCache) {
+                this.cacheControl = Map.of("type", "ephemeral");
+            } else {
+                this.cacheControl = null;
+            }
             return this;
         }
 
