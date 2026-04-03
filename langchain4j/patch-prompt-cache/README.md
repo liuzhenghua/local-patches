@@ -39,3 +39,46 @@ val builder = OpenAiStreamingChatModel.builder()
     }
     return builder.build()
 ```
+
+## 判断生效
+**取原始消息的usage**
+```kotlin
+(completeResponse.metadata() as? OpenAiChatResponseMetadata)?.let { meta ->
+    meta.rawServerSentEvents().lastOrNull()?.let { event ->
+        val jsonElement = Json.parseToJsonElement(event.data())
+        jsonElement.jsonObject["prompt_tokens_details"]?.let { details ->
+            print(details)
+        }
+    }
+}
+```
+
+**首次cache**
+```json
+"usage" : {
+  "prompt_tokens" : 15652,
+  "completion_tokens" : 38,
+  "total_tokens" : 15690,
+  "prompt_tokens_details" : {
+    "cached_tokens" : 0,
+    "creation_tokens" : 15649,
+    "eca_cache_creation_details" : {
+      "ephemeral_5m_input_tokens" : 15649
+    }
+  }
+}
+```
+
+**二次用户消息，使用cache**
+```json
+"usage" : {
+  "prompt_tokens" : 15699,
+  "completion_tokens" : 16,
+  "total_tokens" : 15715,
+  "prompt_tokens_details" : {
+    "cached_tokens" : 15617,
+    "cache_creation_tokens" : 79
+  },
+  "completion_tokens_details" : { }
+}
+```
